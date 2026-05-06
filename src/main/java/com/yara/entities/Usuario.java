@@ -1,5 +1,6 @@
 package com.yara.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -25,7 +26,7 @@ public class Usuario {
     private String email;
 
     private String telefono;
-
+    @JsonIgnore
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 

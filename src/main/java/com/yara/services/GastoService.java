@@ -29,6 +29,7 @@ public class GastoService {
     private final GastoCategoriaRelRepository gastoCategoriaRelRepository;
     private final GrupoUsuarioRepository grupoUsuarioRepository;
     private final NotificacionService notificacionService;
+    private final SeguridadService seguridadService;
 
     public GastoService(
             GastoRepository gastoRepository,
@@ -40,6 +41,7 @@ public class GastoService {
             GastoCategoriaRelRepository gastoCategoriaRelRepository
             , GrupoUsuarioRepository grupoUsuarioRepository
             , NotificacionService notificacionService
+            , SeguridadService seguridadService
     ) {
         this.gastoRepository = gastoRepository;
         this.gastoParticipanteRepository = gastoParticipanteRepository;
@@ -50,6 +52,7 @@ public class GastoService {
         this.gastoCategoriaRelRepository = gastoCategoriaRelRepository;
         this.grupoUsuarioRepository = grupoUsuarioRepository;
         this.notificacionService = notificacionService;
+        this.seguridadService = seguridadService;
     }
 
     // =========================
@@ -66,6 +69,8 @@ public class GastoService {
         Usuario pagador = usuarioRepository
                 .findByEmail(email)
                 .orElseThrow();
+
+
 
         Grupo grupo = grupoRepository
                 .findById(dto.getGrupoId())
@@ -468,25 +473,68 @@ public class GastoService {
     @Transactional
     public void eliminarGasto(Integer gastoId) {
 
+        String email = SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getName();
+
+        Usuario usuario = usuarioRepository
+                .findByEmail(email)
+                .orElseThrow();
+
         Gasto gasto = gastoRepository
                 .findById(gastoId)
-                .orElseThrow(() -> new RuntimeException("Gasto no encontrado"));
+                .orElseThrow();
+
+        Integer grupoId = gasto.getGrupo().getId();
+
+        GrupoUsuario gu = grupoUsuarioRepository
+                .findByGrupo_IdAndUsuario_Id(grupoId, usuario.getId())
+                .orElseThrow(() -> new RuntimeException("No perteneces al grupo"));
+
+        if (!"ADMIN".equalsIgnoreCase(gu.getRolGrupo())) {
+            throw new RuntimeException("Solo el admin puede eliminar gastos");
+        }
 
         if ("ELIMINADO".equalsIgnoreCase(gasto.getEstado())) {
-            throw new RuntimeException("El gasto ya está eliminado");
+            throw new RuntimeException("Ya está eliminado");
         }
 
         gasto.setEstado("ELIMINADO");
-
         gastoRepository.save(gasto);
     }
+
     @Transactional
     public GastoResponseDTO editarGasto(Integer gastoId, CrearGastoDTO dto) {
 
+        // 🔥 1. Usuario logueado
+        String email = SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getName();
+
+        Usuario usuario = usuarioRepository
+                .findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        Integer usuarioId = usuario.getId();
+
+        // 🔥 2. Obtener gasto
         Gasto gasto = gastoRepository.findById(gastoId)
                 .orElseThrow(() -> new RuntimeException("Gasto no encontrado"));
 
-        // 🔥 VALIDACIÓN AQUÍ
+        Integer grupoId = gasto.getGrupo().getId();
+
+        // 🔥 3. Validar pertenencia + rol en el grupo
+        GrupoUsuario gu = grupoUsuarioRepository
+                .findByGrupo_IdAndUsuario_Id(grupoId, usuarioId)
+                .orElseThrow(() -> new RuntimeException("No perteneces a este grupo"));
+
+        if (!"ADMIN".equalsIgnoreCase(gu.getRolGrupo())) {
+            throw new RuntimeException("Solo el admin del grupo puede editar gastos");
+        }
+
+        // 🔥 4. Validación estado
         if ("ELIMINADO".equalsIgnoreCase(gasto.getEstado())) {
             throw new RuntimeException("No se puede editar un gasto eliminado");
         }

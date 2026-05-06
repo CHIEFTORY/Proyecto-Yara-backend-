@@ -21,7 +21,8 @@ public class PagoService {
     private final GrupoRepository grupoRepository;
     private final GastoService gastoService;
     private final NotificacionService notificacionService;
-
+    private final SeguridadService seguridadService;
+    private final GrupoUsuarioRepository grupoUsuarioRepository;
     public PagoService(
             PagoRepository pagoRepository,
             PagoDetalleRepository pagoDetalleRepository,
@@ -30,6 +31,9 @@ public class PagoService {
             GrupoRepository grupoRepository,
             GastoService gastoService
             , NotificacionService notificacionService
+            , SeguridadService seguridadService,
+            GrupoUsuarioRepository grupoUsuarioRepository
+
     ) {
         this.pagoRepository = pagoRepository;
         this.pagoDetalleRepository = pagoDetalleRepository;
@@ -38,11 +42,28 @@ public class PagoService {
         this.grupoRepository = grupoRepository;
         this.gastoService = gastoService;
         this.notificacionService = notificacionService;
+        this.seguridadService = seguridadService;
+        this.grupoUsuarioRepository = grupoUsuarioRepository;
     }
 
-    public PagoResponseDTO registrarPago(
-            CrearPagoDTO dto
-    ) {
+    public PagoResponseDTO registrarPago(CrearPagoDTO dto) {
+
+        // 🔥 1. Usuario logueado
+        String email = SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getName();
+
+        Usuario usuario = usuarioRepository
+                .findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        // ❌ ELIMINAR ESTO
+        // if (!seguridadService.tienePermiso(...))
+
+        // =========================
+        // 🔐 SEGURIDAD
+        // =========================
 
         Usuario deudor = usuarioRepository
                 .findById(dto.getDeudorId())
@@ -61,31 +82,23 @@ public class PagoService {
                         .findById(dto.getMetodoPagoId())
                         .orElseThrow();
 
-        // =========================
-        // 🔐 SEGURIDAD
-        // =========================
-
-        String email = SecurityContextHolder
-                .getContext()
-                .getAuthentication()
-                .getName();
-
+        // 🔥 SOLO EL DEUDOR PUEDE PAGAR
         if (!deudor.getEmail().equals(email)) {
             throw new RuntimeException("No puedes pagar por otro usuario");
         }
+
+        // 🔥 VALIDAR QUE PERTENECE AL GRUPO
+        grupoUsuarioRepository
+                .findByGrupo_IdAndUsuario_Id(dto.getGrupoId(), deudor.getId())
+                .orElseThrow(() -> new RuntimeException("No perteneces al grupo"));
 
         // =========================
         // ❗ VALIDACIONES DE NEGOCIO
         // =========================
 
-        // No pagarse a sí mismo
         if (deudor.getId().equals(acreedor.getId())) {
             throw new RuntimeException("No puedes pagarte a ti mismo");
         }
-
-        // =========================
-        // 💰 VALIDACIÓN DE DEUDA
-        // =========================
 
         BigDecimal balanceDeudor = gastoService
                 .obtenerBalanceUsuario(
@@ -93,18 +106,14 @@ public class PagoService {
                         deudor.getNombre()
                 );
 
-        // Si no debe nada
         if (balanceDeudor.compareTo(BigDecimal.ZERO) >= 0) {
             throw new RuntimeException("El usuario no tiene deuda");
         }
 
         BigDecimal deudaReal = balanceDeudor.abs();
 
-        // Si intenta pagar más de lo que debe
         if (dto.getMonto().compareTo(deudaReal) > 0) {
-            throw new RuntimeException(
-                    "El monto excede la deuda actual"
-            );
+            throw new RuntimeException("El monto excede la deuda actual");
         }
 
         // =========================
@@ -120,8 +129,7 @@ public class PagoService {
                 .fecha(LocalDateTime.now())
                 .build();
 
-        Pago pagoGuardado =
-                pagoRepository.save(pago);
+        Pago pagoGuardado = pagoRepository.save(pago);
 
         // =========================
         // 📄 DETALLE DEL PAGO
@@ -140,17 +148,16 @@ public class PagoService {
 
         pagoDetalleRepository.save(detalle);
 
-                // =========================
-        // NOTIFICACIONES 🔥
         // =========================
-
-        List<Usuario> usuariosNotificar = List.of(deudor, acreedor);
+        // 🔔 NOTIFICACIONES
+        // =========================
 
         notificacionService.notificarUsuarios(
                 List.of(deudor, acreedor),
                 deudor.getNombre() + " pagó S/" + dto.getMonto(),
                 "PAGO"
         );
+
         // =========================
         // 📤 RESPONSE
         // =========================

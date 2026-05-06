@@ -1,0 +1,27 @@
+package com.yara.entities;
+
+import jakarta.persistence.*;
+import lombok.*;
+
+@Entity
+@Table(name = "usuario_rol")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder // 🔥 ESTA LÍNEA ES LA CLAVE
+public class UsuarioRol {
+
+    @EmbeddedId
+    private UsuarioRolId id;
+
+    @ManyToOne
+    @MapsId("usuarioId")
+    @JoinColumn(name = "usuario_id")
+    private Usuario usuario;
+
+    @ManyToOne
+    @MapsId("rolId")
+    @JoinColumn(name = "rol_id")
+    private Rol rol;
+}

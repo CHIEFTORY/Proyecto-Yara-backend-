@@ -99,7 +99,128 @@ public class GrupoService {
                 .build();
     }
 
+    public void agregarUsuarioAGrupo(Integer grupoId, Integer usuarioId) {
 
+        // 🔥 1. Usuario logueado
+        String email = SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getName();
+
+        Usuario usuarioLogueado = usuarioRepository
+                .findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        Integer usuarioLogueadoId = usuarioLogueado.getId(); // 🔥 MOVER AQUÍ
+
+        // 🔥 VALIDACIÓN EXTRA (AHORA SÍ)
+        if (usuarioId.equals(usuarioLogueadoId)) {
+            throw new RuntimeException("Ya perteneces al grupo");
+        }
+
+        // 🔥 2. Obtener grupo
+        Grupo grupo = grupoRepository.findById(grupoId)
+                .orElseThrow(() -> new RuntimeException("Grupo no encontrado"));
+
+        // 🔥 3. Validar ADMIN
+        GrupoUsuario admin = grupoUsuarioRepository
+                .findByGrupo_IdAndUsuario_Id(grupoId, usuarioLogueadoId)
+                .orElseThrow(() -> new RuntimeException("No perteneces al grupo"));
+
+        if (!"ADMIN".equalsIgnoreCase(admin.getRolGrupo())) {
+            throw new RuntimeException("Solo el admin puede agregar usuarios");
+        }
+
+        // 🔥 4. Usuario a agregar
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        // 🔥 5. Evitar duplicados
+        boolean existe = grupoUsuarioRepository
+                .existsByGrupoIdAndUsuarioId(grupoId, usuarioId);
+
+        if (existe) {
+            throw new RuntimeException("El usuario ya pertenece al grupo");
+        }
+
+        // 🔥 6. Guardar
+        GrupoUsuario gu = GrupoUsuario.builder()
+                .grupo(grupo)
+                .usuario(usuario)
+                .rolGrupo("MIEMBRO")
+                .fechaUnion(LocalDateTime.now())
+                .build();
+
+        grupoUsuarioRepository.save(gu);
+    }
+
+    public void salirDelGrupo(Integer grupoId) {
+
+        String email = SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getName();
+
+        Usuario usuario = usuarioRepository
+                .findByEmail(email)
+                .orElseThrow();
+
+        GrupoUsuario gu = grupoUsuarioRepository
+                .findByGrupo_IdAndUsuario_Id(grupoId, usuario.getId())
+                .orElseThrow(() -> new RuntimeException("No perteneces al grupo"));
+
+        // 🔥 evitar que el único ADMIN se vaya
+        if ("ADMIN".equalsIgnoreCase(gu.getRolGrupo())) {
+
+            long admins = grupoUsuarioRepository
+                    .countByGrupo_IdAndRolGrupo(grupoId, "ADMIN");
+
+            if (admins <= 1) {
+                throw new RuntimeException("No puedes salir siendo el único ADMIN");
+            }
+        }
+
+        grupoUsuarioRepository.delete(gu);
+    }
+
+    public void eliminarUsuario(Integer grupoId, Integer usuarioId) {
+
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        Usuario adminUser = usuarioRepository.findByEmail(email).orElseThrow();
+
+        GrupoUsuario admin = grupoUsuarioRepository
+                .findByGrupo_IdAndUsuario_Id(grupoId, adminUser.getId())
+                .orElseThrow();
+
+        if (!"ADMIN".equalsIgnoreCase(admin.getRolGrupo())) {
+            throw new RuntimeException("Solo el admin puede eliminar usuarios");
+        }
+
+        GrupoUsuario gu = grupoUsuarioRepository
+                .findByGrupo_IdAndUsuario_Id(grupoId, usuarioId)
+                .orElseThrow();
+
+        grupoUsuarioRepository.delete(gu);
+    }
+    public List<String> listarUsuarios(Integer grupoId) {
+
+        return grupoUsuarioRepository.findByGrupo_Id(grupoId)
+                .stream()
+                .map(gu -> gu.getUsuario().getNombre() + " (" + gu.getRolGrupo() + ")")
+                .toList();
+    }
+    public List<String> listarMisGrupos() {
+
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        Usuario usuario = usuarioRepository.findByEmail(email).orElseThrow();
+
+        return grupoUsuarioRepository.findByUsuario_Id(usuario.getId())
+                .stream()
+                .map(gu -> gu.getGrupo().getNombre())
+                .toList();
+    }
 
 
 }
