@@ -94,4 +94,69 @@ public class UsuarioService {
                 "Cambió contraseña"
         );
     }
+
+    public UserProfileResponse getProfileByEmail(String email) {
+
+        Usuario user = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        return new UserProfileResponse(
+                user.getId(),
+                user.getNombre(),
+                user.getEmail(),
+                user.getTelefono()
+        );
+    }
+
+    public void updateProfileByEmail(
+            String email,
+            UpdateProfileRequest req
+    ) {
+
+        Usuario user = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        user.setNombre(req.getNombre());
+        user.setTelefono(req.getTelefono());
+
+        usuarioRepository.save(user);
+
+        auditoriaService.registrar(
+                user.getId(),
+                "UPDATE",
+                "USUARIO",
+                user.getId(),
+                "Actualizó perfil"
+        );
+    }
+
+    public void changePasswordByEmail(
+            String email,
+            ChangePasswordRequest req
+    ) {
+
+        Usuario user = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        if (!passwordEncoder.matches(
+                req.getPasswordActual(),
+                user.getPasswordHash()
+        )) {
+            throw new RuntimeException("Password incorrecta");
+        }
+
+        user.setPasswordHash(
+                passwordEncoder.encode(req.getNuevaPassword())
+        );
+
+        usuarioRepository.save(user);
+
+        auditoriaService.registrar(
+                user.getId(),
+                "UPDATE",
+                "USUARIO",
+                user.getId(),
+                "Cambió contraseña"
+        );
+    }
 }
