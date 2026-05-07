@@ -111,8 +111,8 @@ public class SecurityConfig {
                 new CorsConfiguration();
 
         // 🔥 FRONTEND
-        configuration.setAllowedOrigins(
-                List.of("http://localhost:5173")
+        configuration.setAllowedOriginPatterns(
+                List.of("*")
         );
 
         // 🔥 MÉTODOS

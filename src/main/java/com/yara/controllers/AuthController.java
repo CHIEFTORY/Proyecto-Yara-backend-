@@ -1,5 +1,6 @@
 package com.yara.controllers;
 
+import com.yara.dtos.auth.AuthUserDTO;
 import com.yara.dtos.auth.LoginRequest;
 import com.yara.dtos.auth.RegisterDTO;
 import com.yara.entities.authYuser.Rol;
@@ -22,6 +23,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -229,5 +231,22 @@ public class AuthController {
                 "token",
                 token
         );
+    }
+
+    @GetMapping("/me")
+    public AuthUserDTO getMe(
+            Principal principal
+    ) {
+
+        Usuario usuario = usuarioRepository
+                .findByEmail(principal.getName())
+                .orElseThrow(() ->
+                        new RuntimeException("Usuario no encontrado"));
+
+        return AuthUserDTO.builder()
+                .id(usuario.getId())
+                .nombre(usuario.getNombre())
+                .email(usuario.getEmail())
+                .build();
     }
 }

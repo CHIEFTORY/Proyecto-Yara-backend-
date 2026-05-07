@@ -45,6 +45,9 @@ public class Usuario {
     @Column(name = "fecha_creacion")
     private LocalDateTime fechaCreacion;
 
-    @OneToMany(mappedBy = "usuario")
+    @OneToMany(
+            mappedBy = "usuario",
+            fetch = FetchType.EAGER
+    )
     private List<UsuarioRol> usuarioRoles;
 }
