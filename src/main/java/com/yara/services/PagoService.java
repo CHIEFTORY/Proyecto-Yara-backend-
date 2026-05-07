@@ -3,6 +3,7 @@ package com.yara.services;
 import com.yara.dtos.CrearPagoDTO;
 import com.yara.dtos.PagoResponseDTO;
 import com.yara.entities.*;
+import com.yara.entities.authYuser.Usuario;
 import com.yara.repositories.*;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -58,48 +59,64 @@ public class PagoService {
                 .findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        // ❌ ELIMINAR ESTO
-        // if (!seguridadService.tienePermiso(...))
-
         // =========================
-        // 🔐 SEGURIDAD
+        // 🔐 OBTENER ENTIDADES
         // =========================
 
         Usuario deudor = usuarioRepository
                 .findById(dto.getDeudorId())
-                .orElseThrow();
+                .orElseThrow(() -> new RuntimeException("Deudor no encontrado"));
 
         Usuario acreedor = usuarioRepository
                 .findById(dto.getAcreedorId())
-                .orElseThrow();
+                .orElseThrow(() -> new RuntimeException("Acreedor no encontrado"));
 
         Grupo grupo = grupoRepository
                 .findById(dto.getGrupoId())
-                .orElseThrow();
+                .orElseThrow(() -> new RuntimeException("Grupo no encontrado"));
 
         MetodoPago metodoPago =
                 metodoPagoRepository
                         .findById(dto.getMetodoPagoId())
-                        .orElseThrow();
+                        .orElseThrow(() -> new RuntimeException("Método de pago no encontrado"));
+
+        // =========================
+        // 🔐 SEGURIDAD
+        // =========================
 
         // 🔥 SOLO EL DEUDOR PUEDE PAGAR
         if (!deudor.getEmail().equals(email)) {
             throw new RuntimeException("No puedes pagar por otro usuario");
         }
 
-        // 🔥 VALIDAR QUE PERTENECE AL GRUPO
+        // 🔥 VALIDAR DEUDOR EN EL GRUPO
         grupoUsuarioRepository
-                .findByGrupo_IdAndUsuario_Id(dto.getGrupoId(), deudor.getId())
-                .orElseThrow(() -> new RuntimeException("No perteneces al grupo"));
+                .findByGrupo_IdAndUsuario_Id(
+                        dto.getGrupoId(),
+                        deudor.getId()
+                )
+                .orElseThrow(() ->
+                        new RuntimeException("El deudor no pertenece al grupo"));
+
+        // 🔥 VALIDAR ACREEDOR EN EL GRUPO
+        grupoUsuarioRepository
+                .findByGrupo_IdAndUsuario_Id(
+                        dto.getGrupoId(),
+                        acreedor.getId()
+                )
+                .orElseThrow(() ->
+                        new RuntimeException("El acreedor no pertenece al grupo"));
 
         // =========================
         // ❗ VALIDACIONES DE NEGOCIO
         // =========================
 
+        // 🔥 NO PAGARSE A SÍ MISMO
         if (deudor.getId().equals(acreedor.getId())) {
             throw new RuntimeException("No puedes pagarte a ti mismo");
         }
 
+        // 🔥 VALIDAR DEUDA REAL
         BigDecimal balanceDeudor = gastoService
                 .obtenerBalanceUsuario(
                         dto.getGrupoId(),
@@ -112,6 +129,7 @@ public class PagoService {
 
         BigDecimal deudaReal = balanceDeudor.abs();
 
+        // 🔥 NO PAGAR MÁS DE LA DEUDA
         if (dto.getMonto().compareTo(deudaReal) > 0) {
             throw new RuntimeException("El monto excede la deuda actual");
         }
@@ -211,26 +229,45 @@ public class PagoService {
 
     public void eliminarPago(Integer pagoId) {
 
+        // 🔥 OBTENER PAGO
         Pago pago = pagoRepository
                 .findById(pagoId)
-                .orElseThrow();
+                .orElseThrow(() -> new RuntimeException("Pago no encontrado"));
 
-        // 🔐 VALIDACIÓN (opcional pero PRO)
+        // 🔥 VALIDAR ESTADO
+        if ("ELIMINADO".equalsIgnoreCase(pago.getEstado())) {
+            throw new RuntimeException("El pago ya fue eliminado");
+        }
+
+        // 🔥 USUARIO LOGUEADO
         String email = SecurityContextHolder
                 .getContext()
                 .getAuthentication()
                 .getName();
 
+        // 🔥 VALIDAR PERMISOS
         boolean esDeudor = pago.getDeudor().getEmail().equals(email);
         boolean esAcreedor = pago.getAcreedor().getEmail().equals(email);
 
         if (!esDeudor && !esAcreedor) {
-            throw new RuntimeException("No tienes permiso para eliminar este pago");
+            throw new RuntimeException(
+                    "No tienes permiso para eliminar este pago"
+            );
         }
 
         // 🔥 SOFT DELETE
         pago.setEstado("ELIMINADO");
 
         pagoRepository.save(pago);
+
+        // 🔔 NOTIFICACIÓN OPCIONAL
+        notificacionService.notificarUsuarios(
+                List.of(
+                        pago.getDeudor(),
+                        pago.getAcreedor()
+                ),
+                "Se eliminó un pago de S/" + pago.getMonto(),
+                "DELETE"
+        );
     }
 }

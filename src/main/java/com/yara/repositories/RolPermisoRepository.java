@@ -1,7 +1,7 @@
 package com.yara.repositories;
 
-import com.yara.entities.RolPermiso;
-import com.yara.entities.RolPermisoId;
+import com.yara.entities.authYuser.RolPermiso;
+import com.yara.entities.authYuser.RolPermisoId;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

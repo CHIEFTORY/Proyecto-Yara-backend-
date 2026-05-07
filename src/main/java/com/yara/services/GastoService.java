@@ -2,6 +2,7 @@ package com.yara.services;
 
 import com.yara.dtos.*;
 import com.yara.entities.*;
+import com.yara.entities.authYuser.Usuario;
 import com.yara.exceptions.BusinessException;
 import com.yara.repositories.*;
 import org.springframework.data.domain.Page;
@@ -70,8 +71,6 @@ public class GastoService {
                 .findByEmail(email)
                 .orElseThrow();
 
-
-
         Grupo grupo = grupoRepository
                 .findById(dto.getGrupoId())
                 .orElseThrow();
@@ -110,7 +109,9 @@ public class GastoService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         if (sumaCategorias.compareTo(dto.getMonto()) != 0) {
-            throw new RuntimeException("La suma de categorías no coincide con el monto total");
+            throw new RuntimeException(
+                    "La suma de categorías no coincide con el monto total"
+            );
         }
 
         // =========================
@@ -132,6 +133,7 @@ public class GastoService {
         // =========================
         // GUARDAR CATEGORÍAS
         // =========================
+
         Set<Integer> categoriasIds = new HashSet<>();
 
         for (CategoriaGastoDTO cat : dto.getCategorias()) {
@@ -144,7 +146,8 @@ public class GastoService {
 
             GastoCategoria categoria = categoriaRepository
                     .findById(catDTO.getCategoriaId())
-                    .orElseThrow();
+                    .orElseThrow(() ->
+                            new RuntimeException("Categoría no encontrada"));
 
             GastoCategoriaRel rel = GastoCategoriaRel.builder()
                     .gasto(gastoGuardado)
@@ -166,19 +169,36 @@ public class GastoService {
                     2,
                     RoundingMode.HALF_UP
             );
+
             Set<Integer> participantesIds = new HashSet<>();
 
             for (ParticipanteGastoDTO p : dto.getParticipantes()) {
                 if (!participantesIds.add(p.getUsuarioId())) {
-                    throw new BusinessException("Participante repetido en el gasto");
+                    throw new BusinessException(
+                            "Participante repetido en el gasto"
+                    );
                 }
             }
 
             for (ParticipanteGastoDTO participanteDTO : dto.getParticipantes()) {
 
+                // 🔥 VALIDAR QUE EL PARTICIPANTE PERTENECE AL GRUPO
+                boolean participantePertenece =
+                        grupoUsuarioRepository.existsByGrupoIdAndUsuarioId(
+                                grupo.getId(),
+                                participanteDTO.getUsuarioId()
+                        );
+
+                if (!participantePertenece) {
+                    throw new RuntimeException(
+                            "Uno de los participantes no pertenece al grupo"
+                    );
+                }
+
                 Usuario participante = usuarioRepository
                         .findById(participanteDTO.getUsuarioId())
-                        .orElseThrow();
+                        .orElseThrow(() ->
+                                new RuntimeException("Participante no encontrado"));
 
                 GastoParticipante gp = GastoParticipante.builder()
                         .gasto(gastoGuardado)
@@ -210,14 +230,31 @@ public class GastoService {
 
             for (ParticipanteGastoDTO participanteDTO : dto.getParticipantes()) {
 
+                // 🔥 VALIDAR QUE EL PARTICIPANTE PERTENECE AL GRUPO
+                boolean participantePertenece =
+                        grupoUsuarioRepository.existsByGrupoIdAndUsuarioId(
+                                grupo.getId(),
+                                participanteDTO.getUsuarioId()
+                        );
+
+                if (!participantePertenece) {
+                    throw new RuntimeException(
+                            "Uno de los participantes no pertenece al grupo"
+                    );
+                }
+
+                // 🔥 VALIDAR MONTO
                 if (participanteDTO.getMonto() == null ||
                         participanteDTO.getMonto().compareTo(BigDecimal.ZERO) <= 0) {
-                    throw new RuntimeException("Monto inválido en participantes");
+                    throw new RuntimeException(
+                            "Monto inválido en participantes"
+                    );
                 }
 
                 Usuario participante = usuarioRepository
                         .findById(participanteDTO.getUsuarioId())
-                        .orElseThrow();
+                        .orElseThrow(() ->
+                                new RuntimeException("Participante no encontrado"));
 
                 GastoParticipante gp = GastoParticipante.builder()
                         .gasto(gastoGuardado)
@@ -231,7 +268,7 @@ public class GastoService {
         }
 
         // =========================
-        // MAPEAR CATEGORÍAS PARA RESPONSE 🔥
+        // MAPEAR CATEGORÍAS PARA RESPONSE
         // =========================
 
         List<CategoriaResponseDTO> categorias = gastoCategoriaRelRepository
@@ -244,13 +281,15 @@ public class GastoService {
                 .toList();
 
         // =========================
-        // NOTIFICACIONES 🔥
+        // NOTIFICACIONES
         // =========================
 
         List<Usuario> usuariosNotificar = dto.getParticipantes()
                 .stream()
-                .map(p -> usuarioRepository.findById(p.getUsuarioId()).orElseThrow())
-                .filter(u -> !u.getId().equals(pagador.getId())) // no notificar al que pagó
+                .map(p -> usuarioRepository
+                        .findById(p.getUsuarioId())
+                        .orElseThrow())
+                .filter(u -> !u.getId().equals(pagador.getId()))
                 .toList();
 
         notificacionService.notificarUsuarios(
@@ -260,7 +299,7 @@ public class GastoService {
         );
 
         // =========================
-        // RESPONSE FINAL 🔥
+        // RESPONSE FINAL
         // =========================
 
         return GastoResponseDTO.builder()
@@ -571,7 +610,9 @@ public class GastoService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         if (sumaCategorias.compareTo(dto.getMonto()) != 0) {
-            throw new RuntimeException("La suma de categorías no coincide con el monto total");
+            throw new RuntimeException(
+                    "La suma de categorías no coincide con el monto total"
+            );
         }
 
         // =========================
@@ -582,7 +623,8 @@ public class GastoService {
 
             GastoCategoria categoria = categoriaRepository
                     .findById(catDTO.getCategoriaId())
-                    .orElseThrow();
+                    .orElseThrow(() ->
+                            new RuntimeException("Categoría no encontrada"));
 
             GastoCategoriaRel rel = GastoCategoriaRel.builder()
                     .gasto(gasto)
@@ -607,9 +649,23 @@ public class GastoService {
 
             for (ParticipanteGastoDTO participanteDTO : dto.getParticipantes()) {
 
+                // 🔥 VALIDAR QUE EL PARTICIPANTE PERTENECE AL GRUPO
+                boolean participantePertenece =
+                        grupoUsuarioRepository.existsByGrupoIdAndUsuarioId(
+                                gasto.getGrupo().getId(),
+                                participanteDTO.getUsuarioId()
+                        );
+
+                if (!participantePertenece) {
+                    throw new RuntimeException(
+                            "Uno de los participantes no pertenece al grupo"
+                    );
+                }
+
                 Usuario participante = usuarioRepository
                         .findById(participanteDTO.getUsuarioId())
-                        .orElseThrow();
+                        .orElseThrow(() ->
+                                new RuntimeException("Participante no encontrado"));
 
                 GastoParticipante gp = GastoParticipante.builder()
                         .gasto(gasto)
@@ -641,14 +697,31 @@ public class GastoService {
 
             for (ParticipanteGastoDTO participanteDTO : dto.getParticipantes()) {
 
+                // 🔥 VALIDAR QUE EL PARTICIPANTE PERTENECE AL GRUPO
+                boolean participantePertenece =
+                        grupoUsuarioRepository.existsByGrupoIdAndUsuarioId(
+                                gasto.getGrupo().getId(),
+                                participanteDTO.getUsuarioId()
+                        );
+
+                if (!participantePertenece) {
+                    throw new RuntimeException(
+                            "Uno de los participantes no pertenece al grupo"
+                    );
+                }
+
+                // 🔥 VALIDAR MONTO
                 if (participanteDTO.getMonto() == null ||
                         participanteDTO.getMonto().compareTo(BigDecimal.ZERO) <= 0) {
-                    throw new RuntimeException("Monto inválido en participantes");
+                    throw new RuntimeException(
+                            "Monto inválido en participantes"
+                    );
                 }
 
                 Usuario participante = usuarioRepository
                         .findById(participanteDTO.getUsuarioId())
-                        .orElseThrow();
+                        .orElseThrow(() ->
+                                new RuntimeException("Participante no encontrado"));
 
                 GastoParticipante gp = GastoParticipante.builder()
                         .gasto(gasto)
@@ -675,12 +748,14 @@ public class GastoService {
                 .toList();
 
         // =========================
-        // NOTIFICACIONES 🔥
+        // NOTIFICACIONES
         // =========================
 
         List<Usuario> usuariosNotificar = dto.getParticipantes()
                 .stream()
-                .map(p -> usuarioRepository.findById(p.getUsuarioId()).orElseThrow())
+                .map(p -> usuarioRepository
+                        .findById(p.getUsuarioId())
+                        .orElseThrow())
                 .toList();
 
         notificacionService.notificarUsuarios(
@@ -688,6 +763,7 @@ public class GastoService {
                 "Se actualizó el gasto: " + dto.getDescripcion(),
                 "EDIT"
         );
+
         // =========================
         // RESPONSE
         // =========================

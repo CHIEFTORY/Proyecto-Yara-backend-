@@ -1,5 +1,6 @@
 package com.yara.entities;
 
+import com.yara.entities.authYuser.Usuario;
 import jakarta.persistence.*;
 import lombok.*;
 

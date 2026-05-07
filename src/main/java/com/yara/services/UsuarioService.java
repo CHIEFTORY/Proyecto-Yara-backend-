@@ -1,10 +1,10 @@
 package com.yara.services;
 
-import com.yara.dtos.ChangePasswordRequest;
-import com.yara.dtos.UpdateProfileRequest;
-import com.yara.dtos.UserProfileResponse;
-import com.yara.dtos.UsuarioResponseDTO;
-import com.yara.entities.Usuario;
+import com.yara.dtos.usuario.ChangePasswordRequest;
+import com.yara.dtos.usuario.UpdateProfileRequest;
+import com.yara.dtos.usuario.UserProfileResponse;
+import com.yara.dtos.usuario.UsuarioResponseDTO;
+import com.yara.entities.authYuser.Usuario;
 import com.yara.repositories.UsuarioRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;

@@ -1,10 +1,11 @@
-package com.yara.entities;
+package com.yara.entities.authYuser;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "usuario")
@@ -32,6 +33,18 @@ public class Usuario {
 
     private String estado;
 
+    @Column(name = "mfa_enabled")
+    private Boolean mfaEnabled;
+
+    @Column(name = "otp_code")
+    private String otpCode;
+
+    @Column(name = "otp_expiration")
+    private LocalDateTime otpExpiration;
+
     @Column(name = "fecha_creacion")
     private LocalDateTime fechaCreacion;
+
+    @OneToMany(mappedBy = "usuario")
+    private List<UsuarioRol> usuarioRoles;
 }

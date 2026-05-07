@@ -1,4 +1,4 @@
-package com.yara.entities;
+package com.yara.entities.authYuser;
 
 import jakarta.persistence.Embeddable;
 import lombok.AllArgsConstructor;
@@ -13,7 +13,7 @@ import java.io.Serializable;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class UsuarioRolId implements Serializable {
-    private Integer usuarioId;
+public class RolPermisoId implements Serializable {
     private Integer rolId;
+    private Integer permisoId;
 }

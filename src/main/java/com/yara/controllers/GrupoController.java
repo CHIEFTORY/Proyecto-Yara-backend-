@@ -4,6 +4,7 @@ import com.yara.dtos.CrearGrupoDTO;
 import com.yara.dtos.ResumenDTO;
 import com.yara.entities.Grupo;
 import com.yara.services.GrupoService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,7 +22,7 @@ public class GrupoController {
 
     @PostMapping
     public Grupo crearGrupo(
-            @RequestBody CrearGrupoDTO dto
+            @Valid @RequestBody CrearGrupoDTO dto
     ) {
         return grupoService.crearGrupo(dto);
     }

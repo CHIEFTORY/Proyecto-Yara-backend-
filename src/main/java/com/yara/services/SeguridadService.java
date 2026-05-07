@@ -1,7 +1,7 @@
 package com.yara.services;
 
-import com.yara.entities.RolPermiso;
-import com.yara.entities.UsuarioRol;
+import com.yara.entities.authYuser.RolPermiso;
+import com.yara.entities.authYuser.UsuarioRol;
 import com.yara.repositories.RolPermisoRepository;
 import com.yara.repositories.UsuarioRolRepository;
 import lombok.RequiredArgsConstructor;

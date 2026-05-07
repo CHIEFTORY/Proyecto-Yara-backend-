@@ -1,4 +1,4 @@
-package com.yara.entities;
+package com.yara.entities.authYuser;
 
 import jakarta.persistence.*;
 import lombok.Getter;

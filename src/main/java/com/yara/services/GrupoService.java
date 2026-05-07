@@ -2,13 +2,13 @@ package com.yara.services;
 
 import com.yara.dtos.*;
 import com.yara.entities.*;
+import com.yara.entities.authYuser.Usuario;
 import com.yara.repositories.*;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -185,21 +185,47 @@ public class GrupoService {
 
     public void eliminarUsuario(Integer grupoId, Integer usuarioId) {
 
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        String email = SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getName();
 
-        Usuario adminUser = usuarioRepository.findByEmail(email).orElseThrow();
+        Usuario adminUser = usuarioRepository
+                .findByEmail(email)
+                .orElseThrow();
 
+        // 🔥 VALIDAR ADMIN
         GrupoUsuario admin = grupoUsuarioRepository
                 .findByGrupo_IdAndUsuario_Id(grupoId, adminUser.getId())
                 .orElseThrow();
 
         if (!"ADMIN".equalsIgnoreCase(admin.getRolGrupo())) {
-            throw new RuntimeException("Solo el admin puede eliminar usuarios");
+            throw new RuntimeException(
+                    "Solo el admin puede eliminar usuarios"
+            );
         }
 
+        // 🔥 USUARIO A ELIMINAR
         GrupoUsuario gu = grupoUsuarioRepository
                 .findByGrupo_IdAndUsuario_Id(grupoId, usuarioId)
-                .orElseThrow();
+                .orElseThrow(() ->
+                        new RuntimeException("Usuario no encontrado en el grupo"));
+
+        // 🔥 EVITAR ELIMINAR ÚLTIMO ADMIN
+        if ("ADMIN".equalsIgnoreCase(gu.getRolGrupo())) {
+
+            long admins = grupoUsuarioRepository
+                    .countByGrupo_IdAndRolGrupo(
+                            grupoId,
+                            "ADMIN"
+                    );
+
+            if (admins <= 1) {
+                throw new RuntimeException(
+                        "No puedes eliminar al único ADMIN"
+                );
+            }
+        }
 
         grupoUsuarioRepository.delete(gu);
     }

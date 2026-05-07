@@ -1,14 +1,14 @@
-package com.yara.entities;
+package com.yara.entities.authYuser;
 
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "rol")
+@Table(name = "permiso")
 @Getter
 @Setter
-public class Rol {
+public class Permiso {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

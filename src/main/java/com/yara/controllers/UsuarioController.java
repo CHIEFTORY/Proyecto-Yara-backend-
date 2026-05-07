@@ -1,9 +1,9 @@
 package com.yara.controllers;
 
-import com.yara.dtos.ChangePasswordRequest;
-import com.yara.dtos.UpdateProfileRequest;
-import com.yara.dtos.UserProfileResponse;
-import com.yara.dtos.UsuarioResponseDTO;
+import com.yara.dtos.usuario.ChangePasswordRequest;
+import com.yara.dtos.usuario.UpdateProfileRequest;
+import com.yara.dtos.usuario.UserProfileResponse;
+import com.yara.dtos.usuario.UsuarioResponseDTO;
 import com.yara.services.UsuarioService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;

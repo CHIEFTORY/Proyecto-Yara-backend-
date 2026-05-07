@@ -1,6 +1,5 @@
 package com.yara.config;
 
-import com.yara.entities.Usuario;
 import com.yara.repositories.UsuarioRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;

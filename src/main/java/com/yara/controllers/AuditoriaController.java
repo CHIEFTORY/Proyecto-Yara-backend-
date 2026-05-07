@@ -3,6 +3,7 @@ package com.yara.controllers;
 import com.yara.dtos.AuditoriaResponseDTO;
 import com.yara.services.AuditoriaService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,6 +21,7 @@ public class AuditoriaController {
     }
 
     // 🔹 TODAS
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
     public ResponseEntity<List<AuditoriaResponseDTO>>
     listarTodas() {
@@ -30,6 +32,7 @@ public class AuditoriaController {
     }
 
     // 🔹 POR USUARIO
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/usuario/{usuarioId}")
     public ResponseEntity<List<AuditoriaResponseDTO>>
     listarPorUsuario(

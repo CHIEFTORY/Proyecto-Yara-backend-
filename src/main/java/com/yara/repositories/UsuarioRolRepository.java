@@ -1,7 +1,7 @@
 package com.yara.repositories;
 
-import com.yara.entities.UsuarioRol;
-import com.yara.entities.UsuarioRolId;
+import com.yara.entities.authYuser.UsuarioRol;
+import com.yara.entities.authYuser.UsuarioRolId;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

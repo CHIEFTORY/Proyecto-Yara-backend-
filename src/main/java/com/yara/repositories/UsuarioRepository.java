@@ -1,6 +1,6 @@
 package com.yara.repositories;
 
-import com.yara.entities.Usuario;
+import com.yara.entities.authYuser.Usuario;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

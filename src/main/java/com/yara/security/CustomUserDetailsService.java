@@ -1,6 +1,6 @@
 package com.yara.security;
 
-import com.yara.entities.Usuario;
+import com.yara.entities.authYuser.Usuario;
 import com.yara.repositories.UsuarioRepository;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.stereotype.Service;
@@ -15,15 +15,32 @@ public class CustomUserDetailsService implements UserDetailsService {
     }
 
     @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+    public UserDetails loadUserByUsername(String email)
+            throws UsernameNotFoundException {
 
         Usuario usuario = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
+                .orElseThrow(() ->
+                        new UsernameNotFoundException("Credenciales inválidas"));
+
+        // 🔥 VALIDAR ESTADO
+        if (!"ACTIVO".equalsIgnoreCase(usuario.getEstado())) {
+            throw new UsernameNotFoundException("Usuario inactivo");
+        }
 
         return User.builder()
                 .username(usuario.getEmail())
                 .password(usuario.getPasswordHash())
-                .roles("USER")
+
+                .authorities(
+                        usuario.getUsuarioRoles()
+                                .stream()
+                                .map(usuarioRol ->
+                                        "ROLE_" +
+                                                usuarioRol.getRol().getNombre()
+                                )
+                                .toArray(String[]::new)
+                )
+
                 .build();
     }
 }

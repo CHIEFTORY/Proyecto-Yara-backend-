@@ -14,6 +14,7 @@ public class ParticipanteGastoDTO {
     @NotNull(message = "El usuarioId es obligatorio")
     private Integer usuarioId;
 
+    @NotNull(message = "El monto es obligatorio")
     @Positive(message = "El monto debe ser mayor a 0")
     private BigDecimal monto;
 }

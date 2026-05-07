@@ -1,4 +1,4 @@
-package com.yara.dtos;
+package com.yara.dtos.usuario;
 
 import lombok.Builder;
 import lombok.Getter;

@@ -1,5 +1,6 @@
 package com.yara.dtos;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -24,10 +25,11 @@ public class CrearGastoDTO {
     @NotBlank(message = "El tipo de división es obligatorio")
     private String tipoDivision;
 
+    @Valid
     @NotEmpty(message = "Debe haber participantes")
     private List<ParticipanteGastoDTO> participantes;
 
-    // 🔥 NUEVO
+    @Valid
     @NotEmpty(message = "Debe haber al menos una categoría")
     private List<CategoriaGastoDTO> categorias;
 }

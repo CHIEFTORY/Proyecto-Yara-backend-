@@ -1,7 +1,7 @@
 package com.yara.services;
 
 import com.yara.entities.Notificacion;
-import com.yara.entities.Usuario;
+import com.yara.entities.authYuser.Usuario;
 import com.yara.entities.UsuarioNotificacion;
 import com.yara.entities.UsuarioNotificacionId;
 import com.yara.repositories.NotificacionRepository;
