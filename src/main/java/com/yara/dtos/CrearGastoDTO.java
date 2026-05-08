@@ -29,6 +29,9 @@ public class CrearGastoDTO {
     @NotEmpty(message = "Debe haber participantes")
     private List<ParticipanteGastoDTO> participantes;
 
+    @NotNull(message = "El pagador es obligatorio")
+    private Integer pagadoPorId;
+
     @Valid
     @NotEmpty(message = "Debe haber al menos una categoría")
     private List<CategoriaGastoDTO> categorias;

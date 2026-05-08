@@ -81,6 +81,11 @@ public class GrupoService {
     }
     public ResumenDTO obtenerResumen(Integer grupoId) {
 
+        Grupo grupo =
+                grupoRepository
+                        .findById(grupoId)
+                        .orElseThrow();
+
         List<BalanceDTO> balances =
                 gastoService.obtenerBalances(grupoId);
 
@@ -94,12 +99,20 @@ public class GrupoService {
                 gastoService.listarPorGrupoSinPaginacion(grupoId);
 
         BigDecimal totalGastos =
-                gastoRepository.findByGrupoIdAndEstado(grupoId, "ACTIVO")
+                gastoRepository
+                        .findByGrupoIdAndEstado(
+                                grupoId,
+                                "ACTIVO"
+                        )
                         .stream()
                         .map(Gasto::getMontoTotal)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                        .reduce(
+                                BigDecimal.ZERO,
+                                BigDecimal::add
+                        );
 
         return ResumenDTO.builder()
+                .nombre(grupo.getNombre())
                 .balances(balances)
                 .deudas(deudas)
                 .pagos(pagos)
@@ -238,11 +251,26 @@ public class GrupoService {
 
         grupoUsuarioRepository.delete(gu);
     }
-    public List<String> listarUsuarios(Integer grupoId) {
+    public List<GrupoUsuarioDTO> listarUsuarios(
+            Integer grupoId
+    ) {
 
-        return grupoUsuarioRepository.findByGrupo_Id(grupoId)
+        return grupoUsuarioRepository
+                .findByGrupo_Id(grupoId)
                 .stream()
-                .map(gu -> gu.getUsuario().getNombre() + " (" + gu.getRolGrupo() + ")")
+                .map(gu -> {
+
+                    Usuario usuario =
+                            gu.getUsuario();
+
+                    return new GrupoUsuarioDTO(
+                            usuario.getId(),
+                            usuario.getNombre(),
+                            usuario.getEmail(),
+                            gu.getRolGrupo()
+                    );
+
+                })
                 .toList();
     }
 
@@ -290,6 +318,15 @@ public class GrupoService {
                 })
                 .toList();
     }
+    public void eliminarGrupo(Integer grupoId) {
 
+        Grupo grupo = grupoRepository
+                .findById(grupoId)
+                .orElseThrow(() ->
+                        new RuntimeException("Grupo no encontrado")
+                );
+
+        grupoRepository.delete(grupo);
+    }
 
 }

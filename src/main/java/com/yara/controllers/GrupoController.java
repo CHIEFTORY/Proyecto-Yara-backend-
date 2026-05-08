@@ -2,6 +2,7 @@ package com.yara.controllers;
 
 import com.yara.dtos.CrearGrupoDTO;
 import com.yara.dtos.GrupoPreviewDTO;
+import com.yara.dtos.GrupoUsuarioDTO;
 import com.yara.dtos.ResumenDTO;
 import com.yara.entities.Grupo;
 import com.yara.services.GrupoService;
@@ -60,12 +61,23 @@ public class GrupoController {
     }
 
     @GetMapping("/{grupoId}/usuarios")
-    public List<String> listarUsuarios(@PathVariable Integer grupoId) {
+    public List<GrupoUsuarioDTO> listarUsuarios(
+            @PathVariable Integer grupoId
+    ) {
+
         return grupoService.listarUsuarios(grupoId);
     }
 
     @GetMapping("/mios")
     public List<GrupoPreviewDTO> misGrupos() {
         return grupoService.listarMisGrupos();
+    }
+
+    @DeleteMapping("/{grupoId}")
+    public void eliminarGrupo(
+            @PathVariable Integer grupoId
+    ) {
+
+        grupoService.eliminarGrupo(grupoId);
     }
 }

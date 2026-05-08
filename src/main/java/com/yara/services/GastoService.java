@@ -68,8 +68,10 @@ public class GastoService {
                 .getName();
 
         Usuario pagador = usuarioRepository
-                .findByEmail(email)
-                .orElseThrow();
+                .findById(dto.getPagadoPorId())
+                .orElseThrow(() ->
+                        new RuntimeException("Pagador no encontrado")
+                );
 
         Grupo grupo = grupoRepository
                 .findById(dto.getGrupoId())
@@ -362,22 +364,32 @@ public class GastoService {
     public List<BalanceDTO> obtenerBalances(Integer grupoId) {
 
         List<GastoParticipante> participaciones =
-                gastoParticipanteRepository.findByGastoGrupoId(grupoId);
+                gastoParticipanteRepository
+                        .findByGastoGrupoId(grupoId);
 
-        // 🔥 FILTRO IMPORTANTE
         participaciones = participaciones.stream()
-                .filter(gp -> gp.getGasto().getEstado().equals("ACTIVO"))
+                .filter(gp ->
+                        gp.getGasto()
+                                .getEstado()
+                                .equals("ACTIVO")
+                )
                 .toList();
 
         List<Pago> pagos =
                 pagoRepository.findByGrupoId(grupoId);
 
-        // 🔥 FILTRO PAGOS
         pagos = pagos.stream()
-                .filter(p -> p.getEstado().equals("CONFIRMADO"))
+                .filter(p ->
+                        p.getEstado()
+                                .equals("CONFIRMADO")
+                )
                 .toList();
 
-        Map<String, BigDecimal> balances = new HashMap<>();
+        Map<Integer, BigDecimal> balances =
+                new HashMap<>();
+
+        Map<Integer, String> nombres =
+                new HashMap<>();
 
         // =========================
         // GASTOS
@@ -385,25 +397,55 @@ public class GastoService {
 
         for (GastoParticipante gp : participaciones) {
 
-            String participante = gp.getUsuario().getNombre();
-            BigDecimal deuda = gp.getMonto();
+            Integer participanteId =
+                    gp.getUsuario().getId();
 
-            balances.putIfAbsent(participante, BigDecimal.ZERO);
+            String participanteNombre =
+                    gp.getUsuario().getNombre();
 
-            balances.put(
-                    participante,
-                    balances.get(participante).subtract(deuda)
+            BigDecimal deuda =
+                    gp.getMonto();
+
+            nombres.put(
+                    participanteId,
+                    participanteNombre
             );
 
-            String pagador = gp.getGasto()
-                    .getPagadoPor()
-                    .getNombre();
-
-            balances.putIfAbsent(pagador, BigDecimal.ZERO);
+            balances.putIfAbsent(
+                    participanteId,
+                    BigDecimal.ZERO
+            );
 
             balances.put(
-                    pagador,
-                    balances.get(pagador).add(deuda)
+                    participanteId,
+                    balances.get(participanteId)
+                            .subtract(deuda)
+            );
+
+            Integer pagadorId =
+                    gp.getGasto()
+                            .getPagadoPor()
+                            .getId();
+
+            String pagadorNombre =
+                    gp.getGasto()
+                            .getPagadoPor()
+                            .getNombre();
+
+            nombres.put(
+                    pagadorId,
+                    pagadorNombre
+            );
+
+            balances.putIfAbsent(
+                    pagadorId,
+                    BigDecimal.ZERO
+            );
+
+            balances.put(
+                    pagadorId,
+                    balances.get(pagadorId)
+                            .add(deuda)
             );
         }
 
@@ -413,30 +455,62 @@ public class GastoService {
 
         for (Pago pago : pagos) {
 
-            String deudor = pago.getDeudor().getNombre();
-            String acreedor = pago.getAcreedor().getNombre();
-            BigDecimal monto = pago.getMonto();
+            Integer deudorId =
+                    pago.getDeudor().getId();
 
-            balances.putIfAbsent(deudor, BigDecimal.ZERO);
-            balances.putIfAbsent(acreedor, BigDecimal.ZERO);
+            Integer acreedorId =
+                    pago.getAcreedor().getId();
 
-            balances.put(
-                    deudor,
-                    balances.get(deudor).add(monto)
+            BigDecimal monto =
+                    pago.getMonto();
+
+            nombres.put(
+                    deudorId,
+                    pago.getDeudor().getNombre()
+            );
+
+            nombres.put(
+                    acreedorId,
+                    pago.getAcreedor().getNombre()
+            );
+
+            balances.putIfAbsent(
+                    deudorId,
+                    BigDecimal.ZERO
+            );
+
+            balances.putIfAbsent(
+                    acreedorId,
+                    BigDecimal.ZERO
             );
 
             balances.put(
-                    acreedor,
-                    balances.get(acreedor).subtract(monto)
+                    deudorId,
+                    balances.get(deudorId)
+                            .add(monto)
+            );
+
+            balances.put(
+                    acreedorId,
+                    balances.get(acreedorId)
+                            .subtract(monto)
             );
         }
 
         return balances.entrySet()
                 .stream()
                 .map(entry -> BalanceDTO.builder()
-                        .usuario(entry.getKey())
+
+                        .usuarioId(entry.getKey())
+
+                        .usuario(
+                                nombres.get(entry.getKey())
+                        )
+
                         .balance(entry.getValue())
+
                         .build())
+
                 .toList();
     }
 
