@@ -13,4 +13,12 @@ public interface GrupoUsuarioRepository
     List<GrupoUsuario> findByGrupo_Id(Integer grupoId);
     List<GrupoUsuario> findByUsuario_Id(Integer usuarioId);
     long countByGrupo_IdAndRolGrupo(Integer grupoId, String rolGrupo);
+
+    List<GrupoUsuario> findByGrupoId(
+            Integer grupoId
+    );
+
+    List<GrupoUsuario> findByUsuarioId(
+            Integer usuarioId
+    );
 }

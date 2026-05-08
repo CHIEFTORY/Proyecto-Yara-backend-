@@ -1,9 +1,6 @@
 package com.yara.controllers;
 
-import com.yara.dtos.usuario.ChangePasswordRequest;
-import com.yara.dtos.usuario.UpdateProfileRequest;
-import com.yara.dtos.usuario.UserProfileResponse;
-import com.yara.dtos.usuario.UsuarioResponseDTO;
+import com.yara.dtos.usuario.*;
 import com.yara.services.UsuarioService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -71,5 +68,15 @@ public class UsuarioController {
         );
 
         return ResponseEntity.ok("Password actualizada");
+    }
+
+    @GetMapping("/buscar")
+    public ResponseEntity<List<UsuarioBusquedaDTO>> buscar(
+            @RequestParam String query
+    ) {
+
+        return ResponseEntity.ok(
+                usuarioService.buscarUsuarios(query)
+        );
     }
 }

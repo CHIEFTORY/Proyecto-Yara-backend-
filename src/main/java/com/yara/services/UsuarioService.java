@@ -1,9 +1,6 @@
 package com.yara.services;
 
-import com.yara.dtos.usuario.ChangePasswordRequest;
-import com.yara.dtos.usuario.UpdateProfileRequest;
-import com.yara.dtos.usuario.UserProfileResponse;
-import com.yara.dtos.usuario.UsuarioResponseDTO;
+import com.yara.dtos.usuario.*;
 import com.yara.entities.authYuser.Usuario;
 import com.yara.repositories.UsuarioRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -130,6 +127,7 @@ public class UsuarioService {
         );
     }
 
+
     public void changePasswordByEmail(
             String email,
             ChangePasswordRequest req
@@ -158,5 +156,25 @@ public class UsuarioService {
                 user.getId(),
                 "Cambió contraseña"
         );
+    }
+
+    public List<UsuarioBusquedaDTO> buscarUsuarios(
+            String query
+    ) {
+
+        List<Usuario> usuarios =
+                usuarioRepository
+                        .findTop10ByNombreContainingIgnoreCaseOrEmailContainingIgnoreCase(
+                                query,
+                                query
+                        );
+
+        return usuarios.stream()
+                .map(usuario -> new UsuarioBusquedaDTO(
+                        usuario.getId(),
+                        usuario.getNombre(),
+                        usuario.getEmail()
+                ))
+                .toList();
     }
 }

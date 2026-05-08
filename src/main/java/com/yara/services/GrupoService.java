@@ -1,12 +1,17 @@
 package com.yara.services;
-
+import com.yara.dtos.GrupoPreviewDTO;
+import com.yara.entities.GrupoUsuario;
 import com.yara.dtos.*;
 import com.yara.entities.*;
 import com.yara.entities.authYuser.Usuario;
 import com.yara.repositories.*;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.security.core.Authentication;
 
+import org.springframework.security.core.context.SecurityContextHolder;
+import com.yara.entities.authYuser.Usuario;
+import com.yara.repositories.UsuarioRepository;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -22,6 +27,8 @@ public class GrupoService {
     private final GastoRepository gastoRepository;
 
 
+
+
     public GrupoService(
             GrupoRepository grupoRepository,
             UsuarioRepository usuarioRepository,
@@ -29,6 +36,7 @@ public class GrupoService {
             GastoService gastoService,
             PagoService pagoService,
             GastoRepository gastoRepository
+
     ) {
         this.grupoRepository = grupoRepository;
         this.usuarioRepository = usuarioRepository;
@@ -36,6 +44,7 @@ public class GrupoService {
         this.gastoService = gastoService;
         this.pagoService = pagoService;
         this.gastoRepository = gastoRepository;
+
     }
 
     public Grupo crearGrupo(CrearGrupoDTO dto) {
@@ -236,15 +245,49 @@ public class GrupoService {
                 .map(gu -> gu.getUsuario().getNombre() + " (" + gu.getRolGrupo() + ")")
                 .toList();
     }
-    public List<String> listarMisGrupos() {
 
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+    public List<GrupoPreviewDTO> listarMisGrupos() {
 
-        Usuario usuario = usuarioRepository.findByEmail(email).orElseThrow();
+        Authentication authentication =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication();
 
-        return grupoUsuarioRepository.findByUsuario_Id(usuario.getId())
+        String email =
+                authentication.getName();
+
+        Usuario usuario =
+                usuarioRepository
+                        .findByEmail(email)
+                        .orElseThrow();
+
+        List<GrupoUsuario> grupoUsuarios =
+                grupoUsuarioRepository
+                        .findByUsuarioId(
+                                usuario.getId()
+                        );
+
+        return grupoUsuarios
                 .stream()
-                .map(gu -> gu.getGrupo().getNombre())
+                .map(grupoUsuario -> {
+
+                    Grupo grupo =
+                            grupoUsuario.getGrupo();
+
+                    Integer cantidadMiembros =
+                            grupoUsuarioRepository
+                                    .findByGrupoId(
+                                            grupo.getId()
+                                    )
+                                    .size();
+
+                    return new GrupoPreviewDTO(
+                            grupo.getId(),
+                            grupo.getNombre(),
+                            cantidadMiembros
+                    );
+
+                })
                 .toList();
     }
 

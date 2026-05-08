@@ -1,6 +1,7 @@
 package com.yara.controllers;
 
 import com.yara.dtos.CrearGrupoDTO;
+import com.yara.dtos.GrupoPreviewDTO;
 import com.yara.dtos.ResumenDTO;
 import com.yara.entities.Grupo;
 import com.yara.services.GrupoService;
@@ -64,7 +65,7 @@ public class GrupoController {
     }
 
     @GetMapping("/mios")
-    public List<String> misGrupos() {
+    public List<GrupoPreviewDTO> misGrupos() {
         return grupoService.listarMisGrupos();
     }
 }
