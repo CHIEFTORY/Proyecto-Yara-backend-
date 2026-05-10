@@ -1,6 +1,7 @@
 package com.yara.entities;
 
 import com.yara.entities.authYuser.Usuario;
+import com.yara.enums.EstadoPago;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -35,10 +36,17 @@ public class Pago {
 
     private BigDecimal monto;
 
-    private String estado;
+    @Enumerated(EnumType.STRING)
+    private EstadoPago estado;
+
+    private String culqiChargeId;
+
+    private String errorMensaje;
 
     private LocalDateTime fecha;
 
     @OneToMany(mappedBy = "pago")
     private Set<PagoDetalle> pagoDetalles;
+
+
 }

@@ -4,9 +4,13 @@ import com.yara.dtos.CrearPagoDTO;
 import com.yara.dtos.PagoResponseDTO;
 import com.yara.entities.*;
 import com.yara.entities.authYuser.Usuario;
+import com.yara.enums.EstadoMetodoPago;
+import com.yara.enums.EstadoPago;
+import com.yara.exceptions.BusinessException;
 import com.yara.repositories.*;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -24,6 +28,7 @@ public class PagoService {
     private final NotificacionService notificacionService;
     private final SeguridadService seguridadService;
     private final GrupoUsuarioRepository grupoUsuarioRepository;
+    private final CulqiService culqiService ;
     public PagoService(
             PagoRepository pagoRepository,
             PagoDetalleRepository pagoDetalleRepository,
@@ -34,6 +39,7 @@ public class PagoService {
             , NotificacionService notificacionService
             , SeguridadService seguridadService,
             GrupoUsuarioRepository grupoUsuarioRepository
+            , CulqiService culqiService
 
     ) {
         this.pagoRepository = pagoRepository;
@@ -45,8 +51,9 @@ public class PagoService {
         this.notificacionService = notificacionService;
         this.seguridadService = seguridadService;
         this.grupoUsuarioRepository = grupoUsuarioRepository;
+        this.culqiService = culqiService;
     }
-
+    @Transactional
     public PagoResponseDTO registrarPago(CrearPagoDTO dto) {
 
         // 🔥 1. Usuario logueado
@@ -57,7 +64,7 @@ public class PagoService {
 
         Usuario usuario = usuarioRepository
                 .findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new BusinessException("Usuario no encontrado"));
 
         // =========================
         // 🔐 OBTENER ENTIDADES
@@ -65,20 +72,31 @@ public class PagoService {
 
         Usuario deudor = usuarioRepository
                 .findById(dto.getDeudorId())
-                .orElseThrow(() -> new RuntimeException("Deudor no encontrado"));
+                .orElseThrow(() -> new BusinessException("Deudor no encontrado"));
 
         Usuario acreedor = usuarioRepository
                 .findById(dto.getAcreedorId())
-                .orElseThrow(() -> new RuntimeException("Acreedor no encontrado"));
+                .orElseThrow(() -> new BusinessException("Acreedor no encontrado"));
 
         Grupo grupo = grupoRepository
                 .findById(dto.getGrupoId())
-                .orElseThrow(() -> new RuntimeException("Grupo no encontrado"));
+                .orElseThrow(() -> new BusinessException("Grupo no encontrado"));
 
         MetodoPago metodoPago =
                 metodoPagoRepository
-                        .findById(dto.getMetodoPagoId())
-                        .orElseThrow(() -> new RuntimeException("Método de pago no encontrado"));
+                        .findByIdAndUsuarioIdAndEstado(
+
+                                dto.getMetodoPagoId(),
+
+                                usuario.getId(),
+
+                                EstadoMetodoPago.ACTIVO
+                        )
+                        .orElseThrow(() ->
+                                new BusinessException(
+                                        "Método de pago inválido"
+                                )
+                        );
 
         // =========================
         // 🔐 SEGURIDAD
@@ -86,7 +104,7 @@ public class PagoService {
 
         // 🔥 SOLO EL DEUDOR PUEDE PAGAR
         if (!deudor.getEmail().equals(email)) {
-            throw new RuntimeException("No puedes pagar por otro usuario");
+            throw new BusinessException("No puedes pagar por otro usuario");
         }
 
         // 🔥 VALIDAR DEUDOR EN EL GRUPO
@@ -96,7 +114,7 @@ public class PagoService {
                         deudor.getId()
                 )
                 .orElseThrow(() ->
-                        new RuntimeException("El deudor no pertenece al grupo"));
+                        new BusinessException("El deudor no pertenece al grupo"));
 
         // 🔥 VALIDAR ACREEDOR EN EL GRUPO
         grupoUsuarioRepository
@@ -105,7 +123,7 @@ public class PagoService {
                         acreedor.getId()
                 )
                 .orElseThrow(() ->
-                        new RuntimeException("El acreedor no pertenece al grupo"));
+                        new BusinessException("El acreedor no pertenece al grupo"));
 
         // =========================
         // ❗ VALIDACIONES DE NEGOCIO
@@ -113,25 +131,26 @@ public class PagoService {
 
         // 🔥 NO PAGARSE A SÍ MISMO
         if (deudor.getId().equals(acreedor.getId())) {
-            throw new RuntimeException("No puedes pagarte a ti mismo");
+            throw new BusinessException("No puedes pagarte a ti mismo");
         }
 
         // 🔥 VALIDAR DEUDA REAL
-        BigDecimal balanceDeudor = gastoService
-                .obtenerBalanceUsuario(
-                        dto.getGrupoId(),
-                        deudor.getNombre()
-                );
+        BigDecimal balanceDeudor =
+                gastoService
+                        .obtenerBalanceUsuario(
+                                dto.getGrupoId(),
+                                deudor.getId()
+                        );
 
         if (balanceDeudor.compareTo(BigDecimal.ZERO) >= 0) {
-            throw new RuntimeException("El usuario no tiene deuda");
+            throw new BusinessException("El usuario no tiene deuda");
         }
 
         BigDecimal deudaReal = balanceDeudor.abs();
 
         // 🔥 NO PAGAR MÁS DE LA DEUDA
         if (dto.getMonto().compareTo(deudaReal) > 0) {
-            throw new RuntimeException("El monto excede la deuda actual");
+            throw new BusinessException("El monto excede la deuda actual");
         }
 
         // =========================
@@ -143,11 +162,53 @@ public class PagoService {
                 .deudor(deudor)
                 .acreedor(acreedor)
                 .monto(dto.getMonto())
-                .estado("CONFIRMADO")
+                .estado(EstadoPago.PENDIENTE)
                 .fecha(LocalDateTime.now())
                 .build();
 
-        Pago pagoGuardado = pagoRepository.save(pago);
+        Pago pagoGuardado =
+                pagoRepository.save(pago);
+
+        try {
+
+            String chargeId =
+                    culqiService.cobrarTarjeta(
+
+                            metodoPago.getCulqiCardId(),
+
+                            dto.getMonto()
+                    );
+
+            pagoGuardado.setEstado(
+                    EstadoPago.CONFIRMADO
+            );
+
+            pagoGuardado.setCulqiChargeId(
+                    chargeId
+            );
+
+            pagoRepository.save(
+                    pagoGuardado
+            );
+
+        } catch (Exception e) {
+
+            pagoGuardado.setEstado(
+                    EstadoPago.FALLIDO
+            );
+
+            pagoGuardado.setErrorMensaje(
+                    e.getMessage()
+            );
+
+            pagoRepository.save(
+                    pagoGuardado
+            );
+
+            throw new BusinessException(
+                    "No se pudo procesar el pago"
+            );
+        }
 
         // =========================
         // 📄 DETALLE DEL PAGO
@@ -185,7 +246,11 @@ public class PagoService {
                 .deudor(deudor.getNombre())
                 .acreedor(acreedor.getNombre())
                 .monto(pagoGuardado.getMonto())
-                .metodoPago(metodoPago.getNombre())
+                .metodoPago(
+                        metodoPago.getCardBrand()
+                                + " **** "
+                                + metodoPago.getCardLast4()
+                )
                 .estado(pagoGuardado.getEstado())
                 .fecha(pagoGuardado.getFecha())
                 .build();
@@ -198,7 +263,10 @@ public class PagoService {
 
         // 🔥 FILTRO IMPORTANTE
         pagos = pagos.stream()
-                .filter(p -> p.getEstado().equals("CONFIRMADO"))
+                .filter(p ->
+                        p.getEstado() ==
+                                EstadoPago.CONFIRMADO
+                )
                 .toList();
 
         return pagos.stream()
@@ -211,7 +279,15 @@ public class PagoService {
                                 .iterator()
                                 .next()
                                 .getMetodoPago()
-                                .getNombre();
+                                .getCardBrand()
+
+                                + " **** "
+
+                                + pago.getPagoDetalles()
+                                .iterator()
+                                .next()
+                                .getMetodoPago()
+                                .getCardLast4();
                     }
 
                     return PagoResponseDTO.builder()
@@ -232,11 +308,12 @@ public class PagoService {
         // 🔥 OBTENER PAGO
         Pago pago = pagoRepository
                 .findById(pagoId)
-                .orElseThrow(() -> new RuntimeException("Pago no encontrado"));
+                .orElseThrow(() -> new BusinessException("Pago no encontrado"));
 
         // 🔥 VALIDAR ESTADO
-        if ("ELIMINADO".equalsIgnoreCase(pago.getEstado())) {
-            throw new RuntimeException("El pago ya fue eliminado");
+        if (pago.getEstado() ==
+                EstadoPago.ELIMINADO) {
+            throw new BusinessException("El pago ya fue eliminado");
         }
 
         // 🔥 USUARIO LOGUEADO
@@ -250,13 +327,15 @@ public class PagoService {
         boolean esAcreedor = pago.getAcreedor().getEmail().equals(email);
 
         if (!esDeudor && !esAcreedor) {
-            throw new RuntimeException(
+            throw new BusinessException(
                     "No tienes permiso para eliminar este pago"
             );
         }
 
         // 🔥 SOFT DELETE
-        pago.setEstado("ELIMINADO");
+        pago.setEstado(
+                EstadoPago.ELIMINADO
+        );
 
         pagoRepository.save(pago);
 

@@ -26,4 +26,6 @@ public class CrearPagoDTO {
 
     @NotNull(message = "El metodoPagoId es obligatorio")
     private Integer metodoPagoId;
+
+
 }

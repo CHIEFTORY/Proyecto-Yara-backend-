@@ -18,4 +18,10 @@ public class ResumenDTO {
 
     private BigDecimal totalGastos;
     private List<GastoResponseDTO> gastos;
+
+    private BigDecimal totalDebes;
+
+    private BigDecimal totalTeDeben;
+
+    private BigDecimal balanceGeneral;
 }

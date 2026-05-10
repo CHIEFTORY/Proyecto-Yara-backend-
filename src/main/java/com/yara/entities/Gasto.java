@@ -1,6 +1,7 @@
 package com.yara.entities;
 
 import com.yara.entities.authYuser.Usuario;
+import com.yara.enums.EstadoGasto;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -36,7 +37,8 @@ public class Gasto {
     @Column(name = "tipo_division")
     private String tipoDivision;
 
-    private String estado;
+    @Enumerated(EnumType.STRING)
+    private EstadoGasto estado;
 
     private LocalDateTime fecha;
 }

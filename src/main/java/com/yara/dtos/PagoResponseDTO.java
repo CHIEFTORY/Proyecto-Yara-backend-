@@ -1,5 +1,6 @@
 package com.yara.dtos;
 
+import com.yara.enums.EstadoPago;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -22,7 +23,7 @@ public class PagoResponseDTO {
 
     private String metodoPago;
 
-    private String estado;
+    private EstadoPago estado;
 
     private LocalDateTime fecha;
 }

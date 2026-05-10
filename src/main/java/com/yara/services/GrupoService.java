@@ -4,6 +4,7 @@ import com.yara.entities.GrupoUsuario;
 import com.yara.dtos.*;
 import com.yara.entities.*;
 import com.yara.entities.authYuser.Usuario;
+import com.yara.enums.EstadoGasto;
 import com.yara.repositories.*;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -102,7 +103,7 @@ public class GrupoService {
                 gastoRepository
                         .findByGrupoIdAndEstado(
                                 grupoId,
-                                "ACTIVO"
+                                EstadoGasto.ACTIVO
                         )
                         .stream()
                         .map(Gasto::getMontoTotal)
@@ -111,6 +112,62 @@ public class GrupoService {
                                 BigDecimal::add
                         );
 
+        String email =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication()
+                        .getName();
+
+        Usuario usuario =
+                usuarioRepository
+                        .findByEmail(email)
+                        .orElseThrow();
+
+        BalanceDTO miBalance =
+                balances.stream()
+
+                        .filter(b ->
+
+                                b.getUsuario()
+                                        .equals(
+                                                usuario.getNombre()
+                                        )
+                        )
+
+                        .findFirst()
+
+                        .orElse(null);
+
+        BigDecimal totalDebes =
+                BigDecimal.ZERO;
+
+        BigDecimal totalTeDeben =
+                BigDecimal.ZERO;
+
+        BigDecimal balanceGeneral =
+                BigDecimal.ZERO;
+
+        if (miBalance != null) {
+
+            balanceGeneral =
+                    miBalance.getBalance();
+
+            if (
+                    balanceGeneral.compareTo(
+                            BigDecimal.ZERO
+                    ) < 0
+            ) {
+
+                totalDebes =
+                        balanceGeneral.abs();
+
+            } else {
+
+                totalTeDeben =
+                        balanceGeneral;
+            }
+        }
+
         return ResumenDTO.builder()
                 .nombre(grupo.getNombre())
                 .balances(balances)
@@ -118,6 +175,9 @@ public class GrupoService {
                 .pagos(pagos)
                 .gastos(gastos)
                 .totalGastos(totalGastos)
+                .totalDebes(totalDebes)
+                .totalTeDeben(totalTeDeben)
+                .balanceGeneral(balanceGeneral)
                 .build();
     }
 
@@ -309,11 +369,28 @@ public class GrupoService {
                                     )
                                     .size();
 
-                    return new GrupoPreviewDTO(
-                            grupo.getId(),
-                            grupo.getNombre(),
-                            cantidadMiembros
-                    );
+                    return GrupoPreviewDTO.builder()
+
+                            .id(
+                                    grupo.getId()
+                            )
+
+                            .nombre(
+                                    grupo.getNombre()
+                            )
+
+                            .cantidadMiembros(
+                                    cantidadMiembros
+                            )
+
+                            .miBalance(
+                                    gastoService.obtenerBalanceUsuario(
+                                            grupo.getId(),
+                                            usuario.getId()
+                                    )
+                            )
+
+                            .build();
 
                 })
                 .toList();
@@ -327,6 +404,65 @@ public class GrupoService {
                 );
 
         grupoRepository.delete(grupo);
+    }
+
+    public DashboardBalanceDTO
+    obtenerBalanceDashboard() {
+
+        List<GrupoPreviewDTO> grupos =
+                listarMisGrupos();
+
+        BigDecimal totalDebes =
+                BigDecimal.ZERO;
+
+        BigDecimal totalTeDeben =
+                BigDecimal.ZERO;
+
+        for (GrupoPreviewDTO grupo : grupos) {
+
+            BigDecimal balance =
+
+                    grupo.getMiBalance() != null
+
+                            ? grupo.getMiBalance()
+
+                            : BigDecimal.ZERO;
+
+            if (
+                    balance.compareTo(
+                            BigDecimal.ZERO
+                    ) < 0
+            ) {
+
+                totalDebes =
+                        totalDebes.add(
+                                balance.abs()
+                        );
+
+            } else {
+
+                totalTeDeben =
+                        totalTeDeben.add(
+                                balance
+                        );
+            }
+        }
+
+        BigDecimal balanceGeneral =
+                totalTeDeben.subtract(
+                        totalDebes
+                );
+
+        return DashboardBalanceDTO
+                .builder()
+
+                .totalDebes(totalDebes)
+
+                .totalTeDeben(totalTeDeben)
+
+                .balanceGeneral(balanceGeneral)
+
+                .build();
     }
 
 }

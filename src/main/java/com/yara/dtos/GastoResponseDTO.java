@@ -1,5 +1,6 @@
 package com.yara.dtos;
 
+import com.yara.enums.EstadoGasto;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -25,9 +26,13 @@ public class GastoResponseDTO {
 
     private String tipoDivision;
 
-    private String estado;
+    private EstadoGasto estado;
 
     private LocalDateTime fecha;
 
     private List<CategoriaResponseDTO> categorias;
+
+    private Integer pagadoPorId;
+
+    private List<ParticipanteGastoDTO> participantes;
 }

@@ -1,6 +1,7 @@
 package com.yara.entities;
 
 import com.yara.entities.authYuser.Usuario;
+import com.yara.enums.EstadoParticipanteGasto;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -31,5 +32,6 @@ public class GastoParticipante {
 
     private BigDecimal porcentaje;
 
-    private String estado;
+    @Enumerated(EnumType.STRING)
+    private EstadoParticipanteGasto estado;
 }

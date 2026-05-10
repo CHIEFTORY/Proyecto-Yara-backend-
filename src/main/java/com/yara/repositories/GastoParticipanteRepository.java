@@ -9,4 +9,6 @@ public interface GastoParticipanteRepository
         extends JpaRepository<GastoParticipante, Integer> {
     List<GastoParticipante> findByGastoGrupoId(Integer grupoId);
     void deleteByGastoId(Integer gastoId);
+    List<GastoParticipante>
+    findByGastoId(Integer gastoId);
 }

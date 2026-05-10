@@ -1,9 +1,6 @@
 package com.yara.controllers;
 
-import com.yara.dtos.CrearGrupoDTO;
-import com.yara.dtos.GrupoPreviewDTO;
-import com.yara.dtos.GrupoUsuarioDTO;
-import com.yara.dtos.ResumenDTO;
+import com.yara.dtos.*;
 import com.yara.entities.Grupo;
 import com.yara.services.GrupoService;
 import jakarta.validation.Valid;
@@ -79,5 +76,13 @@ public class GrupoController {
     ) {
 
         grupoService.eliminarGrupo(grupoId);
+    }
+
+    @GetMapping("/dashboard-balance")
+    public DashboardBalanceDTO
+    obtenerBalanceDashboard() {
+
+        return grupoService
+                .obtenerBalanceDashboard();
     }
 }

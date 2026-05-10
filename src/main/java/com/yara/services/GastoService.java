@@ -3,6 +3,9 @@ package com.yara.services;
 import com.yara.dtos.*;
 import com.yara.entities.*;
 import com.yara.entities.authYuser.Usuario;
+import com.yara.enums.EstadoGasto;
+import com.yara.enums.EstadoPago;
+import com.yara.enums.EstadoParticipanteGasto;
 import com.yara.exceptions.BusinessException;
 import com.yara.repositories.*;
 import org.springframework.data.domain.Page;
@@ -126,7 +129,9 @@ public class GastoService {
                 .grupo(grupo)
                 .pagadoPor(pagador)
                 .tipoDivision(dto.getTipoDivision())
-                .estado("ACTIVO")
+                .estado(
+                        EstadoGasto.ACTIVO
+                )
                 .fecha(LocalDateTime.now())
                 .build();
 
@@ -206,7 +211,9 @@ public class GastoService {
                         .gasto(gastoGuardado)
                         .usuario(participante)
                         .monto(division)
-                        .estado("PENDIENTE")
+                        .estado(
+                                EstadoParticipanteGasto.PENDIENTE
+                        )
                         .build();
 
                 gastoParticipanteRepository.save(gp);
@@ -262,7 +269,9 @@ public class GastoService {
                         .gasto(gastoGuardado)
                         .usuario(participante)
                         .monto(participanteDTO.getMonto())
-                        .estado("PENDIENTE")
+                        .estado(
+                                EstadoParticipanteGasto.PENDIENTE
+                        )
                         .build();
 
                 gastoParticipanteRepository.save(gp);
@@ -330,7 +339,7 @@ public class GastoService {
         );
 
         Page<Gasto> gastosPage =
-                gastoRepository.findByGrupoIdAndEstado(grupoId, "ACTIVO", pageable);
+                gastoRepository.findByGrupoIdAndEstado(grupoId, EstadoGasto.ACTIVO, pageable);
 
         return gastosPage.map(gasto -> {
 
@@ -371,7 +380,7 @@ public class GastoService {
                 .filter(gp ->
                         gp.getGasto()
                                 .getEstado()
-                                .equals("ACTIVO")
+                                == EstadoGasto.ACTIVO
                 )
                 .toList();
 
@@ -381,7 +390,7 @@ public class GastoService {
         pagos = pagos.stream()
                 .filter(p ->
                         p.getEstado()
-                                .equals("CONFIRMADO")
+                                == EstadoPago.CONFIRMADO
                 )
                 .toList();
 
@@ -514,15 +523,35 @@ public class GastoService {
                 .toList();
     }
 
-    public BigDecimal obtenerBalanceUsuario(Integer grupoId, String nombreUsuario) {
+    public BigDecimal obtenerBalanceUsuario(
+            Integer grupoId,
+            Integer usuarioId
+    ) {
 
-        List<BalanceDTO> balances = obtenerBalances(grupoId);
+        List<BalanceDTO> balances =
+                obtenerBalances(grupoId);
 
-        return balances.stream()
-                .filter(b -> b.getUsuario().equals(nombreUsuario))
-                .map(BalanceDTO::getBalance)
-                .findFirst()
-                .orElse(BigDecimal.ZERO);
+
+
+        BigDecimal resultado =
+                balances.stream()
+
+                        .filter(b ->
+
+                                b.getUsuarioId()
+                                        .equals(usuarioId)
+                        )
+
+                        .map(BalanceDTO::getBalance)
+
+                        .findFirst()
+
+                        .orElse(BigDecimal.ZERO);
+
+        System.out.println("RESULTADO:");
+        System.out.println(resultado);
+
+        return resultado;
     }
 
     public List<DeudaDTO> simplificarDeudas(Integer grupoId) {
@@ -555,9 +584,25 @@ public class GastoService {
 
             resultado.add(
                     DeudaDTO.builder()
-                            .deudor(deudor.getUsuario())
-                            .acreedor(acreedor.getUsuario())
+
+                            .deudor(
+                                    deudor.getUsuario()
+                            )
+
+                            .deudorId(
+                                    deudor.getUsuarioId()
+                            )
+
+                            .acreedor(
+                                    acreedor.getUsuario()
+                            )
+
+                            .acreedorId(
+                                    acreedor.getUsuarioId()
+                            )
+
                             .monto(monto)
+
                             .build()
             );
 
@@ -609,11 +654,14 @@ public class GastoService {
             throw new RuntimeException("Solo el admin puede eliminar gastos");
         }
 
-        if ("ELIMINADO".equalsIgnoreCase(gasto.getEstado())) {
+        if (gasto.getEstado()
+                == EstadoGasto.ELIMINADO) {
             throw new RuntimeException("Ya está eliminado");
         }
 
-        gasto.setEstado("ELIMINADO");
+        gasto.setEstado(
+                EstadoGasto.ELIMINADO
+        );
         gastoRepository.save(gasto);
     }
 
@@ -648,7 +696,8 @@ public class GastoService {
         }
 
         // 🔥 4. Validación estado
-        if ("ELIMINADO".equalsIgnoreCase(gasto.getEstado())) {
+        if (gasto.getEstado()
+                == EstadoGasto.ELIMINADO) {
             throw new RuntimeException("No se puede editar un gasto eliminado");
         }
 
@@ -745,7 +794,9 @@ public class GastoService {
                         .gasto(gasto)
                         .usuario(participante)
                         .monto(division)
-                        .estado("PENDIENTE")
+                        .estado(
+                                EstadoParticipanteGasto.PENDIENTE
+                        )
                         .build();
 
                 gastoParticipanteRepository.save(gp);
@@ -801,7 +852,9 @@ public class GastoService {
                         .gasto(gasto)
                         .usuario(participante)
                         .monto(participanteDTO.getMonto())
-                        .estado("PENDIENTE")
+                        .estado(
+                                EstadoParticipanteGasto.PENDIENTE
+                        )
                         .build();
 
                 gastoParticipanteRepository.save(gp);
@@ -858,7 +911,7 @@ public class GastoService {
     public List<GastoResponseDTO> listarPorGrupoSinPaginacion(Integer grupoId) {
 
         List<Gasto> gastos =
-                gastoRepository.findByGrupoIdAndEstado(grupoId, "ACTIVO");
+                gastoRepository.findByGrupoIdAndEstado(grupoId, EstadoGasto.ACTIVO);
 
         return gastos.stream()
                 .sorted(Comparator.comparing(Gasto::getFecha).reversed())
@@ -886,5 +939,86 @@ public class GastoService {
                             .build();
                 })
                 .toList();
+    }
+
+    public GastoResponseDTO obtenerPorId(
+            Integer gastoId
+    ) {
+
+        Gasto gasto =
+                gastoRepository
+                        .findById(gastoId)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Gasto no encontrado"
+                                )
+                        );
+
+        return GastoResponseDTO.builder()
+
+                .id(gasto.getId())
+
+                .descripcion(
+                        gasto.getDescripcion()
+                )
+
+                .montoTotal(
+                        gasto.getMontoTotal()
+                )
+
+                .grupoNombre(
+                        gasto.getGrupo()
+                                .getNombre()
+                )
+
+                .pagadoPor(
+                        gasto.getPagadoPor()
+                                .getNombre()
+                )
+
+                .pagadoPorId(
+                        gasto.getPagadoPor()
+                                .getId()
+                )
+
+                .tipoDivision(
+                        gasto.getTipoDivision()
+                )
+
+                .estado(
+                        gasto.getEstado()
+                )
+
+                .fecha(
+                        gasto.getFecha()
+                )
+
+                .participantes(
+
+                        gastoParticipanteRepository
+                                .findByGastoId(
+                                        gasto.getId()
+                                )
+                                .stream()
+                                .map(p -> {
+
+                                    ParticipanteGastoDTO dto =
+                                            new ParticipanteGastoDTO();
+
+                                    dto.setUsuarioId(
+                                            p.getUsuario().getId()
+                                    );
+
+                                    dto.setMonto(
+                                            p.getMonto()
+                                    );
+
+                                    return dto;
+
+                                })
+                                .toList()
+                )
+
+                .build();
     }
 }

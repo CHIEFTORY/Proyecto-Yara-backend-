@@ -16,4 +16,7 @@ public class DeudaDTO {
     private String acreedor;
 
     private BigDecimal monto;
+    private Integer deudorId;
+
+    private Integer acreedorId;
 }

@@ -61,4 +61,11 @@ public class GastoController {
     ) {
         return gastoService.editarGasto(gastoId, dto);
     }
+
+    @GetMapping("/{gastoId}")
+    public GastoResponseDTO obtenerPorId(
+            @PathVariable Integer gastoId
+    ) {
+        return gastoService.obtenerPorId(gastoId);
+    }
 }
