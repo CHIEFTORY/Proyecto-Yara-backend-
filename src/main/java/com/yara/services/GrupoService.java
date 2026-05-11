@@ -5,6 +5,7 @@ import com.yara.dtos.*;
 import com.yara.entities.*;
 import com.yara.entities.authYuser.Usuario;
 import com.yara.enums.EstadoGasto;
+import com.yara.enums.RolGrupo;
 import com.yara.repositories.*;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -72,7 +73,7 @@ public class GrupoService {
         GrupoUsuario grupoUsuario = GrupoUsuario.builder()
                 .grupo(grupoGuardado)
                 .usuario(usuario)
-                .rolGrupo("ADMIN")
+                .rolGrupo(RolGrupo.ADMIN)
                 .fechaUnion(LocalDateTime.now())
                 .build();
 
@@ -209,7 +210,8 @@ public class GrupoService {
                 .findByGrupo_IdAndUsuario_Id(grupoId, usuarioLogueadoId)
                 .orElseThrow(() -> new RuntimeException("No perteneces al grupo"));
 
-        if (!"ADMIN".equalsIgnoreCase(admin.getRolGrupo())) {
+        if (admin.getRolGrupo()
+                != RolGrupo.ADMIN) {
             throw new RuntimeException("Solo el admin puede agregar usuarios");
         }
 
@@ -229,7 +231,7 @@ public class GrupoService {
         GrupoUsuario gu = GrupoUsuario.builder()
                 .grupo(grupo)
                 .usuario(usuario)
-                .rolGrupo("MIEMBRO")
+                .rolGrupo(RolGrupo.MIEMBRO)
                 .fechaUnion(LocalDateTime.now())
                 .build();
 
@@ -248,22 +250,40 @@ public class GrupoService {
                 .orElseThrow();
 
         GrupoUsuario gu = grupoUsuarioRepository
-                .findByGrupo_IdAndUsuario_Id(grupoId, usuario.getId())
-                .orElseThrow(() -> new RuntimeException("No perteneces al grupo"));
+                .findByGrupo_IdAndUsuario_Id(
+                        grupoId,
+                        usuario.getId()
+                )
+                .orElseThrow(() ->
+                        new RuntimeException(
+                                "No perteneces al grupo"
+                        )
+                );
 
         // 🔥 evitar que el único ADMIN se vaya
-        if ("ADMIN".equalsIgnoreCase(gu.getRolGrupo())) {
+        if (
+                gu.getRolGrupo()
+                        == RolGrupo.ADMIN
+        ) {
 
-            long admins = grupoUsuarioRepository
-                    .countByGrupo_IdAndRolGrupo(grupoId, "ADMIN");
+            long admins =
+                    grupoUsuarioRepository
+                            .countByGrupo_IdAndRolGrupo(
+                                    grupoId,
+                                    RolGrupo.ADMIN
+                            );
 
             if (admins <= 1) {
-                throw new RuntimeException("No puedes salir siendo el único ADMIN");
+
+                throw new RuntimeException(
+                        "No puedes salir siendo el único ADMIN"
+                );
             }
         }
 
         grupoUsuarioRepository.delete(gu);
     }
+
 
     public void eliminarUsuario(Integer grupoId, Integer usuarioId) {
 
@@ -281,7 +301,8 @@ public class GrupoService {
                 .findByGrupo_IdAndUsuario_Id(grupoId, adminUser.getId())
                 .orElseThrow();
 
-        if (!"ADMIN".equalsIgnoreCase(admin.getRolGrupo())) {
+        if (admin.getRolGrupo()
+                != RolGrupo.ADMIN) {
             throw new RuntimeException(
                     "Solo el admin puede eliminar usuarios"
             );
@@ -294,12 +315,13 @@ public class GrupoService {
                         new RuntimeException("Usuario no encontrado en el grupo"));
 
         // 🔥 EVITAR ELIMINAR ÚLTIMO ADMIN
-        if ("ADMIN".equalsIgnoreCase(gu.getRolGrupo())) {
+        if (gu.getRolGrupo()
+                == RolGrupo.ADMIN) {
 
             long admins = grupoUsuarioRepository
                     .countByGrupo_IdAndRolGrupo(
                             grupoId,
-                            "ADMIN"
+                            RolGrupo.ADMIN
                     );
 
             if (admins <= 1) {
@@ -327,7 +349,7 @@ public class GrupoService {
                             usuario.getId(),
                             usuario.getNombre(),
                             usuario.getEmail(),
-                            gu.getRolGrupo()
+                            gu.getRolGrupo().name()
                     );
 
                 })
@@ -400,8 +422,63 @@ public class GrupoService {
         Grupo grupo = grupoRepository
                 .findById(grupoId)
                 .orElseThrow(() ->
-                        new RuntimeException("Grupo no encontrado")
+                        new RuntimeException(
+                                "Grupo no encontrado"
+                        )
                 );
+
+        // =========================
+        // USUARIO LOGUEADO
+        // =========================
+
+        String email =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication()
+                        .getName();
+
+        Usuario usuario =
+                usuarioRepository
+                        .findByEmail(email)
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "Usuario no encontrado"
+                                )
+                        );
+
+        // =========================
+        // VALIDAR MEMBRO DEL GRUPO
+        // =========================
+
+        GrupoUsuario grupoUsuario =
+                grupoUsuarioRepository
+                        .findByGrupo_IdAndUsuario_Id(
+                                grupoId,
+                                usuario.getId()
+                        )
+                        .orElseThrow(() ->
+                                new RuntimeException(
+                                        "No perteneces al grupo"
+                                )
+                        );
+
+        // =========================
+        // SOLO ADMIN PUEDE ELIMINAR
+        // =========================
+
+        if (
+                grupoUsuario.getRolGrupo()
+                        != RolGrupo.ADMIN
+        ) {
+
+            throw new RuntimeException(
+                    "Solo el administrador puede eliminar el grupo"
+            );
+        }
+
+        // =========================
+        // ELIMINAR
+        // =========================
 
         grupoRepository.delete(grupo);
     }

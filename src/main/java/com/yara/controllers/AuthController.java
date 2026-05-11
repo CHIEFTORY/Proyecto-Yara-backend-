@@ -7,6 +7,7 @@ import com.yara.entities.authYuser.Rol;
 import com.yara.entities.authYuser.Usuario;
 import com.yara.entities.authYuser.UsuarioRol;
 import com.yara.entities.authYuser.UsuarioRolId;
+import com.yara.exceptions.BusinessException;
 import com.yara.repositories.RolRepository;
 import com.yara.repositories.UsuarioRepository;
 import com.yara.repositories.UsuarioRolRepository;
@@ -139,7 +140,9 @@ public class AuthController {
     ) {
 
         if (usuarioRepository.findByEmail(dto.getEmail()).isPresent()) {
-            throw new RuntimeException("El email ya está registrado");
+            throw new BusinessException(
+                    "Este correo ya está registrado"
+            );
         }
 
         // 🔥 CREAR USUARIO

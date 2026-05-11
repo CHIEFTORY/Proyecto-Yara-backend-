@@ -1,6 +1,7 @@
 package com.yara.repositories;
 
 import com.yara.entities.GrupoUsuario;
+import com.yara.enums.RolGrupo;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -12,7 +13,7 @@ public interface GrupoUsuarioRepository
     Optional<GrupoUsuario> findByGrupo_IdAndUsuario_Id(Integer grupoId, Integer usuarioId);
     List<GrupoUsuario> findByGrupo_Id(Integer grupoId);
     List<GrupoUsuario> findByUsuario_Id(Integer usuarioId);
-    long countByGrupo_IdAndRolGrupo(Integer grupoId, String rolGrupo);
+    long countByGrupo_IdAndRolGrupo(Integer grupoId, RolGrupo rolGrupo);
 
     List<GrupoUsuario> findByGrupoId(
             Integer grupoId

@@ -6,6 +6,7 @@ import com.yara.entities.authYuser.Usuario;
 import com.yara.enums.EstadoGasto;
 import com.yara.enums.EstadoPago;
 import com.yara.enums.EstadoParticipanteGasto;
+import com.yara.enums.RolGrupo;
 import com.yara.exceptions.BusinessException;
 import com.yara.repositories.*;
 import org.springframework.data.domain.Page;
@@ -18,7 +19,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Month;
 import java.util.*;
 
 @Service
@@ -548,8 +551,7 @@ public class GastoService {
 
                         .orElse(BigDecimal.ZERO);
 
-        System.out.println("RESULTADO:");
-        System.out.println(resultado);
+
 
         return resultado;
     }
@@ -650,7 +652,8 @@ public class GastoService {
                 .findByGrupo_IdAndUsuario_Id(grupoId, usuario.getId())
                 .orElseThrow(() -> new RuntimeException("No perteneces al grupo"));
 
-        if (!"ADMIN".equalsIgnoreCase(gu.getRolGrupo())) {
+        if (gu.getRolGrupo()
+                != RolGrupo.ADMIN) {
             throw new RuntimeException("Solo el admin puede eliminar gastos");
         }
 
@@ -691,7 +694,8 @@ public class GastoService {
                 .findByGrupo_IdAndUsuario_Id(grupoId, usuarioId)
                 .orElseThrow(() -> new RuntimeException("No perteneces a este grupo"));
 
-        if (!"ADMIN".equalsIgnoreCase(gu.getRolGrupo())) {
+        if (gu.getRolGrupo()
+                != RolGrupo.ADMIN) {
             throw new RuntimeException("Solo el admin del grupo puede editar gastos");
         }
 
@@ -1020,5 +1024,106 @@ public class GastoService {
                 )
 
                 .build();
+    }
+
+
+    public List<ChartDTO>
+    obtenerChartGastos() {
+
+        String email =
+                SecurityContextHolder
+                        .getContext()
+                        .getAuthentication()
+                        .getName();
+
+        Usuario usuario =
+                usuarioRepository
+                        .findByEmail(email)
+                        .orElseThrow();
+
+        List<Gasto> gastos =
+                gastoRepository.findAll();
+
+        gastos = gastos.stream()
+
+                .filter(g ->
+                        g.getEstado()
+                                == EstadoGasto.ACTIVO
+                )
+
+                .filter(g ->
+
+                        grupoUsuarioRepository
+                                .existsByGrupoIdAndUsuarioId(
+
+                                        g.getGrupo().getId(),
+
+                                        usuario.getId()
+                                )
+                )
+
+                .toList();
+
+        Map<Month, BigDecimal> mapa =
+                new LinkedHashMap<>();
+
+        for (Month month : Month.values()) {
+
+            mapa.put(
+                    month,
+                    BigDecimal.ZERO
+            );
+        }
+
+        for (Gasto gasto : gastos) {
+
+            Month mes =
+                    gasto.getFecha()
+                            .getMonth();
+
+            mapa.put(
+
+                    mes,
+
+                    mapa.get(mes)
+                            .add(
+                                    gasto.getMontoTotal()
+                            )
+            );
+        }
+
+        Month mesActual =
+                LocalDate.now()
+                        .getMonth();
+
+        List<Month> ultimosMeses =
+                new ArrayList<>();
+
+        for (int i = 5; i >= 0; i--) {
+
+            ultimosMeses.add(
+                    mesActual.minus(i)
+            );
+        }
+
+        return ultimosMeses.stream()
+
+                .map(month ->
+
+                        ChartDTO.builder()
+
+                                .mes(
+                                        month.name()
+                                                .substring(0, 3)
+                                )
+
+                                .total(
+                                        mapa.get(month)
+                                )
+
+                                .build()
+                )
+
+                .toList();
     }
 }

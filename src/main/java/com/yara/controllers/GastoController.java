@@ -1,11 +1,9 @@
 package com.yara.controllers;
 
-import com.yara.dtos.BalanceDTO;
-import com.yara.dtos.CrearGastoDTO;
-import com.yara.dtos.DeudaDTO;
-import com.yara.dtos.GastoResponseDTO;
+import com.yara.dtos.*;
 import com.yara.services.GastoService;
 import org.springframework.data.domain.Page;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -67,5 +65,14 @@ public class GastoController {
             @PathVariable Integer gastoId
     ) {
         return gastoService.obtenerPorId(gastoId);
+    }
+
+    @GetMapping("/chart")
+    public ResponseEntity<List<ChartDTO>>
+    obtenerChart() {
+
+        return ResponseEntity.ok(
+                gastoService.obtenerChartGastos()
+        );
     }
 }

@@ -1,6 +1,7 @@
 package com.yara.entities;
 
 import com.yara.entities.authYuser.Usuario;
+import com.yara.enums.RolGrupo;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -27,8 +28,10 @@ public class GrupoUsuario {
     @JoinColumn(name = "usuario_id")
     private Usuario usuario;
 
+    @Enumerated(EnumType.STRING)
+
     @Column(name = "rol_grupo")
-    private String rolGrupo;
+    private RolGrupo rolGrupo;
 
     @Column(name = "fecha_union")
     private LocalDateTime fechaUnion;
